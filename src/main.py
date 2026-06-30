@@ -88,11 +88,34 @@ def main() -> None:
     create_app(config, monitor, reply_engine, tray_toggle_requested)
 
     import nicegui
+
+    # Detect whether pywebview native window is available.
+    # pywebview requires Microsoft Edge WebView2 Runtime on Windows.
+    # If unavailable, fall back to opening in the default browser.
+    use_native = True
+    try:
+        import webview  # noqa: F401
+    except ImportError:
+        logger.warning(
+            "pywebview not available (WebView2 Runtime may be missing). "
+            "Opening in browser at http://localhost:8080 instead."
+        )
+        use_native = False
+    except Exception as e:
+        logger.warning(f"pywebview check failed: {e}. Opening in browser instead.")
+        use_native = False
+
+    if use_native:
+        logger.info("Starting in native window mode")
+    else:
+        logger.info("Starting in browser mode — open http://localhost:8080")
+
     nicegui.ui.run(
         title="从容猛攻助手",
-        native=True,
+        native=use_native,
         window_size=(480, 720),
         reload=False,
+        port=8080 if not use_native else None,
     )
 
 

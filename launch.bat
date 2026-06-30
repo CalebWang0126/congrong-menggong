@@ -1,7 +1,9 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
 title 从容猛攻助手
+
+:: Switch to UTF-8 for Chinese character display (safe to skip if unsupported)
+chcp 65001 >nul 2>&1
 
 :: ──────────────────────────────────────────
 ::  从容猛攻助手 — 一键启动器
@@ -61,7 +63,7 @@ set "NEED_INSTALL=0"
 if "!NEED_INSTALL!"=="1" (
     echo   Installing dependencies (first run takes 1-2 minutes)...
     .venv\Scripts\python.exe -m pip install -r requirements.txt -q
-    if %errorlevel% neq 0 (
+    if !errorlevel! neq 0 (
         echo   [FAIL] Dependency install failed! Check your network and retry.
         pause
         exit /b 1
@@ -87,5 +89,7 @@ if %errorlevel% neq 0 (
     echo.
     echo   [FAIL] Program exited abnormally (code: %errorlevel%)
     echo   Check the log output above for details
-    pause
 )
+echo.
+echo   Program exited.
+pause
