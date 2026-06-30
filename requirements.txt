@@ -4,3 +4,4 @@ Pillow>=10.0
 nicegui>=1.4
 pystray>=0.19
 loguru>=0.7
+pywebview>=5.0

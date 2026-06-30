@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 from typing import Any
 
@@ -37,6 +38,7 @@ def create_app(
     config: ConfigManager,
     monitor: Monitor,
     reply_engine: ReplyEngine,
+    tray_toggle_requested: threading.Event | None = None,
 ) -> None:
     store = MessageStore()
 
@@ -107,6 +109,39 @@ def create_app(
                 ui.label(f"{msg['time']} {msg['sender']}：{msg['content']}")
 
     store.bind(build_message_list)
+
+    # --- Tray toggle polling ---
+    # The system tray runs in a separate thread and cannot directly call
+    # monitor.start() / monitor.stop() because those need the asyncio event loop.
+    # Instead, the tray sets a threading.Event which this timer polls from
+    # within nicegui's asyncio context, where it's safe to toggle.
+    if tray_toggle_requested is not None:
+
+        def _tray_on_message(msg: dict):
+            logger.info(f"[Tray] New message from {msg.get('sender')}")
+
+        async def _poll_tray_toggle():
+            if tray_toggle_requested.is_set():
+                tray_toggle_requested.clear()
+                nonlocal monitoring
+                if monitoring:
+                    monitor.stop()
+                    monitoring = False
+                    status_label.set_text("⏸ 已停止")
+                    start_btn.set_text("开始监听")
+                    start_btn.props("color=green")
+                else:
+                    # Check WeChat availability before starting
+                    if not monitor._wechat.is_available():
+                        ui.notify("微信未运行或未登录，请先打开微信 PC 客户端", type="error")
+                        return
+                    monitor.start(_tray_on_message)
+                    monitoring = True
+                    status_label.set_text("🟢 监听中")
+                    start_btn.set_text("停止监听")
+                    start_btn.props("color=red")
+
+        ui.timer(0.5, _poll_tray_toggle)
 
     # --- UI Layout ---
     with ui.column().classes("w-full max-w-2xl mx-auto p-4 gap-4"):

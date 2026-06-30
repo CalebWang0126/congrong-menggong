@@ -50,36 +50,28 @@ def main() -> None:
             "微信未运行或未登录！请先打开并登录微信 PC 客户端，然后重启本程序。"
         )
 
-    # Start GUI
-    from src.gui.app import create_app
-
     # Update matcher when config targets change
     matcher.update_targets(config.get("targets", []))
+
+    # Thread-safe signal for tray to request monitoring toggle.
+    # The nicegui app polls this from within its asyncio event loop
+    # so that monitor.start() / monitor.stop() run in the correct context.
+    tray_toggle_requested = threading.Event()
 
     # Optional: system tray in a daemon thread
     try:
         from src.gui.tray import create_tray
-        import asyncio
-
-        loop = asyncio.get_event_loop()
 
         def on_exit():
             logger.info("Exiting...")
             if monitor.is_running:
-                loop.call_soon_threadsafe(monitor.stop)
+                monitor.stop()
             import os
             os._exit(0)
 
-        # Safe wrapper for tray to start/stop monitor from background thread
         def tray_toggle_monitor(*args):
-            if monitor.is_running:
-                loop.call_soon_threadsafe(monitor.stop)
-            else:
-                loop.call_soon_threadsafe(monitor.start, tray_on_message)
-
-        def tray_on_message(msg: dict):
-            # In tray-only mode, log the message
-            logger.info(f"[Tray] New message from {msg.get('sender')}")
+            """Signal the main loop to toggle monitoring (thread-safe)."""
+            tray_toggle_requested.set()
 
         tray_thread = threading.Thread(
             target=create_tray,
@@ -91,7 +83,9 @@ def main() -> None:
         logger.warning(f"System tray unavailable: {e}")
 
     # Launch NiceGUI
-    create_app(config, monitor, reply_engine)
+    from src.gui.app import create_app
+
+    create_app(config, monitor, reply_engine, tray_toggle_requested)
 
     import nicegui
     nicegui.ui.run(
