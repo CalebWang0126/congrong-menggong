@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import time
 from typing import Callable
 
 from loguru import logger
@@ -30,6 +31,8 @@ class Monitor:
         self._running = False
         self._task: asyncio.Task | None = None
         self._on_message: Callable[[dict], None] | None = None
+        self._last_reply_time: dict[str, float] = {}
+        self.REPLY_COOLDOWN: float = 3.0  # seconds before re-replying to same sender
 
     @property
     def is_running(self) -> bool:
@@ -56,6 +59,14 @@ class Monitor:
             matched = self._matcher.match(sender)
             if matched is None:
                 continue
+
+            # Rate-limit per sender
+            now = time.monotonic()
+            last = self._last_reply_time.get(sender, 0.0)
+            if now - last < self.REPLY_COOLDOWN:
+                logger.debug(f"Skipping {sender} — cooldown ({self.REPLY_COOLDOWN - (now - last):.1f}s remaining)")
+                continue
+            self._last_reply_time[sender] = now
 
             raw_last = self._wechat.get_last_message(sender)
 

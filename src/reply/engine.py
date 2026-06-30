@@ -37,7 +37,7 @@ class ReplyEngine:
         text: str,
         with_screenshot: bool | None = None,
     ) -> bool:
-        """Send a reply to `contact_name`. Returns True on success."""
+        """Send a reply to `contact_name`. Retries once on failure. Returns True on success."""
         if not text.strip():
             logger.warning("Empty text, skipping send")
             return False
@@ -47,12 +47,7 @@ class ReplyEngine:
 
         self._wait_interval()
 
-        # Open the target chat
-        if not self._wechat.open_chat(contact_name):
-            logger.error(f"Could not open chat for {contact_name}")
-            return False
-
-        # Capture screenshot if needed
+        # Capture screenshot before attempting send (don't retry this part)
         screenshot_path: Path | None = None
         if with_screenshot:
             try:
@@ -60,12 +55,28 @@ class ReplyEngine:
             except Exception as e:
                 logger.error(f"Screenshot failed: {e}")
 
-        # Send text first
-        if not self._wechat.send_text(text):
-            logger.error("Failed to send text")
-            return False
+        # Try send with one retry
+        for attempt in (1, 2):
+            if not self._wechat.open_chat(contact_name):
+                if attempt == 1:
+                    logger.warning(f"Retry {attempt}: could not open chat for {contact_name}")
+                    time.sleep(1.0)
+                    continue
+                logger.error(f"Could not open chat for {contact_name} after retry")
+                return False
 
-        # Then send screenshot if available
+            if not self._wechat.send_text(text):
+                if attempt == 1:
+                    logger.warning(f"Retry {attempt}: failed to send text")
+                    time.sleep(1.0)
+                    continue
+                logger.error("Failed to send text after retry")
+                return False
+
+            # Success on this attempt
+            break
+
+        # Send screenshot if we have one
         if screenshot_path:
             success = self._wechat.send_image(screenshot_path)
             self._screenshotter.cleanup(screenshot_path)

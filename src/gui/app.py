@@ -51,10 +51,15 @@ def create_app(
             contact = msg["matched_target"].get("nickname", msg["sender"])
             reply_engine.send(contact, preset, with_screenshot=with_screenshot)
 
-    def toggle_monitoring():
+    async def toggle_monitoring():
         nonlocal monitoring
         monitoring = not monitoring
         if monitoring:
+            # Check WeChat availability before starting
+            if not monitor._wechat.is_available():
+                ui.notify("微信未运行或未登录，请先打开微信 PC 客户端", type="error")
+                monitoring = False
+                return
             monitor.start(on_new_message)
             status_label.set_text("🟢 监听中")
             start_btn.set_text("停止监听")
