@@ -43,15 +43,15 @@ def create_app(
     # --- State ---
     monitoring = False
 
-    async def on_new_message(msg: dict) -> None:
-        store.add(msg["sender"], msg["raw_content"])
+    def on_new_message(msg: dict) -> None:
+        store.add(msg["sender"], msg["content"])
         if config.get("auto_reply"):
             preset = config.get("preset_reply", "")
             with_screenshot = config.get("screenshot", False)
             contact = msg["matched_target"].get("nickname", msg["sender"])
             reply_engine.send(contact, preset, with_screenshot=with_screenshot)
 
-    async def toggle_monitoring():
+    def toggle_monitoring():
         nonlocal monitoring
         monitoring = not monitoring
         if monitoring:
@@ -65,7 +65,7 @@ def create_app(
             start_btn.set_text("开始监听")
             start_btn.props("color=green")
 
-    async def handle_manual_send():
+    def handle_manual_send():
         text = manual_input.value.strip()
         if not text:
             ui.notify("请输入回复内容", type="warning")
@@ -83,7 +83,7 @@ def create_app(
         else:
             ui.notify("发送失败，请检查微信是否打开", type="error")
 
-    async def save_config():
+    def save_config():
         config.save({
             "preset_reply": preset_input.value,
             "auto_reply": auto_reply_switch.value,
