@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import threading
 from typing import Callable
 
 from PIL import Image, ImageDraw
@@ -43,16 +42,16 @@ def create_tray(
         "从容猛攻助手",
     )
 
-    def _show():
+    def _show(*args):
         on_show()
 
-    def _toggle_monitor():
+    def _toggle_monitor(*args):
         if monitor.is_running:
             monitor.stop()
         else:
             monitor.start(lambda msg: None)
 
-    def _exit():
+    def _exit(*args):
         if monitor.is_running:
             monitor.stop()
         icon.stop()
