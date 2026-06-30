@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.backends._legacy:_Backend"
+
+[project]
+name = "congrong-menggong"
+version = "0.1.0"
+description = "从容猛攻助手 — 游戏时微信自动报备工具"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "uiautomation>=2.0",
+    "mss>=9.0",
+    "Pillow>=10.0",
+    "nicegui>=1.4",
+    "pystray>=0.19",
+    "loguru>=0.7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+]
