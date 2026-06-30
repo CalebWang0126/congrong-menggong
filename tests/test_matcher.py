@@ -46,3 +46,9 @@ class TestMsgMatcher:
         result = matcher.match("老婆")
         assert result is not None
         assert result["nickname"] == "张三"
+
+    def test_match_by_nickname_with_message_preview(self):
+        """WeChat may embed the last message preview in the sender name."""
+        matcher = MsgMatcher([{"nickname": "宝贝老婆", "remark": ""}])
+        result = matcher.match("宝贝老婆几点回家")
+        assert result == {"nickname": "宝贝老婆", "remark": ""}

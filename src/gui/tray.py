@@ -30,6 +30,7 @@ def create_tray(
     monitor,
     on_show: Callable[[], None],
     on_exit: Callable[[], None],
+    on_toggle: Callable[..., None] | None = None,
 ) -> None:
     """Create and run a system tray icon. Blocks the current thread."""
     if not HAS_PYSTRAY:
@@ -46,7 +47,9 @@ def create_tray(
         on_show()
 
     def _toggle_monitor(*args):
-        if monitor.is_running:
+        if on_toggle:
+            on_toggle()
+        elif monitor.is_running:    # fallback if no callback provided
             monitor.stop()
         else:
             monitor.start(lambda msg: None)

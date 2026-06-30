@@ -13,8 +13,8 @@ class MsgMatcher:
         for target in self._targets:
             remark = target.get("remark", "").strip()
             nickname = target.get("nickname", "").strip()
-            if remark and clean == remark:
+            if remark and (clean == remark or clean.startswith(remark)):
                 return target
-            if nickname and clean == nickname:
+            if nickname and (clean == nickname or clean.startswith(nickname)):
                 return target
         return None

@@ -59,17 +59,31 @@ def main() -> None:
     # Optional: system tray in a daemon thread
     try:
         from src.gui.tray import create_tray
+        import asyncio
+
+        loop = asyncio.get_event_loop()
 
         def on_exit():
             logger.info("Exiting...")
             if monitor.is_running:
-                monitor.stop()
+                loop.call_soon_threadsafe(monitor.stop)
             import os
             os._exit(0)
 
+        # Safe wrapper for tray to start/stop monitor from background thread
+        def tray_toggle_monitor(*args):
+            if monitor.is_running:
+                loop.call_soon_threadsafe(monitor.stop)
+            else:
+                loop.call_soon_threadsafe(monitor.start, tray_on_message)
+
+        def tray_on_message(msg: dict):
+            # In tray-only mode, log the message
+            logger.info(f"[Tray] New message from {msg.get('sender')}")
+
         tray_thread = threading.Thread(
             target=create_tray,
-            args=(config, monitor, lambda: None, on_exit),
+            args=(config, monitor, lambda: None, on_exit, tray_toggle_monitor),
             daemon=True,
         )
         tray_thread.start()
