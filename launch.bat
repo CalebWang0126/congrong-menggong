@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 title 从容猛攻助手
 
-:: Switch to UTF-8 for Chinese character display (safe to skip if unsupported)
+:: Switch to UTF-8 for Chinese character display
 chcp 65001 >nul 2>&1
 
 :: ──────────────────────────────────────────
@@ -11,6 +11,10 @@ chcp 65001 >nul 2>&1
 
 set "PROJECT_DIR=%~dp0"
 cd /d "%PROJECT_DIR%"
+
+:: Log file for capturing Python errors
+set "LOG_FILE=%PROJECT_DIR%launch.log"
+echo Launch started at %date% %time% > "%LOG_FILE%"
 
 echo.
 echo   +====================================+
@@ -39,9 +43,10 @@ echo   [2/3] Preparing virtual environment...
 
 if not exist ".venv\Scripts\python.exe" (
     echo   Creating virtual environment...
-    python -m venv .venv
+    python -m venv .venv >> "%LOG_FILE%" 2>&1
     if %errorlevel% neq 0 (
         echo   [FAIL] Failed to create virtual environment!
+        echo   See launch.log for details
         pause
         exit /b 1
     )
@@ -62,9 +67,10 @@ set "NEED_INSTALL=0"
 
 if "!NEED_INSTALL!"=="1" (
     echo   Installing dependencies (first run takes 1-2 minutes)...
-    .venv\Scripts\python.exe -m pip install -r requirements.txt -q
+    .venv\Scripts\python.exe -m pip install -r requirements.txt -q >> "%LOG_FILE%" 2>&1
     if !errorlevel! neq 0 (
-        echo   [FAIL] Dependency install failed! Check your network and retry.
+        echo   [FAIL] Dependency install failed! Check your network.
+        echo   See launch.log for details
         pause
         exit /b 1
     )
@@ -76,20 +82,30 @@ if "!NEED_INSTALL!"=="1" (
 :: ── Launch ───────────────────────────────
 echo.
 echo   =====================================
-echo     Starting...
-echo     If WeChat is not open, launch WeChat
-echo     and log in first, then click
-echo     [Start Monitoring] in this tool
+echo     Starting application...
+echo     Log: launch.log
 echo   =====================================
 echo.
 
-.venv\Scripts\python.exe -m src.main
+:: Run with stdout+stderr captured to log
+.venv\Scripts\python.exe -m src.main >> "%LOG_FILE%" 2>&1
 
-if %errorlevel% neq 0 (
+set "EXIT_CODE=%errorlevel%"
+
+if %EXIT_CODE% neq 0 (
     echo.
-    echo   [FAIL] Program exited abnormally (code: %errorlevel%)
-    echo   Check the log output above for details
+    echo   =====================================
+    echo   [FAIL] Program crashed (code: %EXIT_CODE%)
+    echo   =====================================
+    echo.
+    echo   Last 20 lines of launch.log:
+    echo   -------------------------------------
+    type "%LOG_FILE%" 2>nul | findstr /n "." | findstr /r "^2[0-9]: ^1[0-9]: ^[0-9]:" | more
+    echo   -------------------------------------
+    echo.
+    echo   Full log saved to: %PROJECT_DIR%launch.log
 )
+
 echo.
 echo   Program exited.
 pause

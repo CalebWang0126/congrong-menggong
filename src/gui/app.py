@@ -53,7 +53,7 @@ def create_app(
             contact = msg["matched_target"].get("nickname", msg["sender"])
             reply_engine.send(contact, preset, with_screenshot=with_screenshot)
 
-    async def toggle_monitoring():
+    def toggle_monitoring():
         nonlocal monitoring
         monitoring = not monitoring
         if monitoring:
